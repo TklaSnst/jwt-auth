@@ -1,8 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from .database import async_session
-from .crud import DBUserTable
 from authx import AuthX, AuthXConfig
 from jwt.exceptions import ExpiredSignatureError
+from src.database import user_manager
 from fastapi import Response
 import jwt
 import os
@@ -26,11 +24,31 @@ class TokenManager():
         try:
             payload = jwt.decode(
                 token,
-                os.getenv("JWT_SECRET_KEY")
+                os.getenv("JWT_SECRET_KEY"),
+                algorithms=["HS256"],
             )
             return payload
         except ExpiredSignatureError:
             return None
+        
+    async def validate_user(self, response: Response, jwt_access_token: str, jwt_refresh_token: str) -> dict | None:
+        token_data = await self.validate_token(token=jwt_access_token)
+        if token_data:
+            return token_data
+        uid = await self.get_id_from_access_token(jwt_access_token=jwt_access_token)
+        user = await user_manager.get_by_id(uid=uid)
+        if (not user) or (user.jwt_refresh_token != jwt_refresh_token):
+            return None
+        new_tokens = await self.get_pair_tokens(id=uid)
+        result = await self.update_cookies(
+            uid=uid,
+            response=response,
+            new_access_token=new_tokens.get("jwt_access_token"),
+            new_refresh_token=new_tokens.get("jwt_refresh_token")
+        )
+        if not result:
+            return None
+        return result      
 
     async def get_id_from_access_token(self, jwt_access_token) -> int | None:
         try:
@@ -71,3 +89,5 @@ class TokenManager():
         except Exception as e:
             return None
         
+
+token_manager = TokenManager()

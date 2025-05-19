@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from src import (basic_router, auth_router, create_tables, drop_tables)
+from src import (basic_router, auth_router, librarian_router, create_tables, drop_tables)
 from dotenv import load_dotenv
 import uvicorn
 
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(basic_router)
 app.include_router(auth_router)
+app.include_router(librarian_router)
 
 
 if __name__ == "__main__":

@@ -13,4 +13,10 @@ class SCreateUser(Base):
 class SCredentials(Base):
     username: str
     password: str
-    
+
+
+class SAddBook(Base):
+    name: str
+    author: str
+    release_year: int
+    ibsn: str
