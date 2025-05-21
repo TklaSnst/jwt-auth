@@ -12,13 +12,13 @@ class DBUserTable():
 
     async def get_by_id(self, uid: int) -> User | None:
         async with self.async_session() as session:
-            try:
+            # try:
                 stmt = select(User).where(User.uid == uid)
                 result = await session.execute(stmt)
                 user = result.scalar()
                 return user
-            except Exception as e:
-                return None
+            # except Exception as e:
+            #     return None
             
     async def get_by_username(self, username: str) -> User | None:
         async with self.async_session() as session:
@@ -69,30 +69,28 @@ class BookCrud():
             
     async def borrow_one(self, book_id: int, user_id: int) -> int | None:
         async with self.async_session() as session:
-            try:
-                stmt = (select(BorrowedBooks)
-                        .where(BorrowedBooks.user_id == user_id, 
-                               BorrowedBooks.return_date.is_(None))
-                    )
-                result = await session.execute(stmt)
-                if len(result.scalars().all()) > 3:
-                    return -1
+            stmt = (select(BorrowedBooks)
+                    .where(BorrowedBooks.user_id == user_id)
+                    .where(BorrowedBooks.return_date.is_(None))
+                )
+            result = await session.execute(stmt)
+            if len(result.scalars().all()) > 3:
+                return -1
 
-                stmt = select(Book).where(Book.id == book_id)
-                result = await session.execute(stmt)
-                book = result.scalar()
-                book.count -= 1
-                new_record = BorrowedBooks(
-                    user_id=user_id, book_id=book_id, borrow_date=date.today()
-                    )
-                session.add(new_record)
-                await session.commit()
-                return book.id
-            except Exception as e:
-                return None    
+            stmt = select(Book).where(Book.id == book_id)
+            result = await session.execute(stmt)
+            book = result.scalar()
+            book.count -= 1
+            book_id = book.id
+            new_record = BorrowedBooks(
+                user_id=user_id, book_id=book_id, borrow_date=date.today()
+                )
+            session.add(new_record)
+            await session.commit()
+            return book_id
             
     async def return_one(self, book_id: int, user_id: int):
-        async with async_session() as session:
+        async with self.async_session() as session:
             try:
                 stmt = ( 
                     select(BorrowedBooks)

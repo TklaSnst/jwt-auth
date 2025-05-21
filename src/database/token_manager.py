@@ -30,14 +30,30 @@ class TokenManager():
             return payload
         except ExpiredSignatureError:
             return None
+
+    async def get_id_from_expired_token(self, jwt_access_token) -> int | None:
+        try:
+            payload = jwt.decode(
+                jwt_access_token,
+                os.getenv("JWT_SECRET_KEY"),
+                algorithms=["HS256"],
+                options={"verify_signature": False}
+            )
+            uid = payload.get("sub")
+            return uid
+        except Exception as e:
+            return None
         
     async def validate_user(self, response: Response, jwt_access_token: str, jwt_refresh_token: str) -> dict | None:
         token_data = await self.validate_token(token=jwt_access_token)
         if token_data:
             return token_data
-        uid = await self.get_id_from_access_token(jwt_access_token=jwt_access_token)
+
+        uid = await self.get_id_from_expired_token(jwt_access_token=jwt_access_token)
         user = await user_manager.get_by_id(uid=uid)
-        if (not user) or (user.jwt_refresh_token != jwt_refresh_token):
+        if (not user):
+            print("no user")
+        if (user.jwt_refresh_token != jwt_refresh_token):
             return None
         new_tokens = await self.get_pair_tokens(id=uid)
         result = await self.update_cookies(
@@ -52,8 +68,10 @@ class TokenManager():
 
     async def get_id_from_access_token(self, jwt_access_token) -> int | None:
         try:
-            payload = self.validate_token(jwt_access_token)
-            uid: int = payload.get("sub")
+            payload = await self.validate_token(jwt_access_token)
+            uid = payload.get("sub")
+            print(uid)
+            print(payload)
             return uid
         except Exception as e:
             return None

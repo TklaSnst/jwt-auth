@@ -16,16 +16,20 @@ async def borrow_book(book_id: int, request: Request, response: Response):
     book = await book_manager.get_one_data(book_id=book_id)
     if not book:
         return "There is no such book"
-    if book.count < 1:
+    if book.count == 0:
         return "There is no books left"
     jwt_access_token = request.cookies.get("jwt_access_token")
     jwt_refresh_token = request.cookies.get("jwt_refresh_token")
     user_validation = await token_manager.validate_user(
         response=response, jwt_access_token=jwt_access_token, jwt_refresh_token=jwt_refresh_token
     )
+    print(request.cookies.get("jwt_access_token"))
     if not user_validation:
         return RedirectResponse("http://127.0.0.1:8000/login")
-    borrow_res = book_manager.borrow_one(id=token_manager.get_id_from_access_token(jwt_access_token))
+    borrow_res = await book_manager.borrow_one(
+        user_id= await token_manager.get_id_from_access_token(jwt_access_token),
+        book_id=book_id,
+    )
     if not borrow_res:
         return "Something went wrong"
     elif borrow_res == -1:
